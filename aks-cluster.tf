@@ -6,10 +6,10 @@ provider "azurerm" {
 
 resource "azurerm_resource_group" "default" {
   name     = "${random_pet.prefix.id}-rg"
-  location = "West US 2"
+  location = var.location
 
   tags = {
-    environment = "Demo"
+    environment = var.env
   }
 }
 
@@ -21,9 +21,9 @@ resource "azurerm_kubernetes_cluster" "default" {
 
   default_node_pool {
     name            = "default"
-    node_count      = 2
-    vm_size         = "Standard_D2_v2"
-    os_disk_size_gb = 30
+    node_count      = var.node_count
+    vm_size         = var.vm_size
+    os_disk_size_gb = var.os_disk_size_gb
   }
 
   service_principal {
@@ -42,6 +42,6 @@ resource "azurerm_kubernetes_cluster" "default" {
   }
 
   tags = {
-    environment = "Demo"
+    environment = var.env
   }
 }
