@@ -22,6 +22,7 @@ resource "kubernetes_namespace" "argo" {
   metadata {
     name = var.namespace
   }
+  depends_on = [null_resource.get-aks-credentials]
 }
 
 # ----------------------------------------------------------------------------------------------------------------------
