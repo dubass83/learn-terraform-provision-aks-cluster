@@ -1,6 +1,5 @@
 locals{
-  tmp_dir           = "${path.cwd}/.tmp"
-  password_file     = "${local.tmp_dir}/argocd-password.val"
+  password_file     = ".argocd-password.val"
   resources = split("\n---\n", data.http.install.body)
 }
 
