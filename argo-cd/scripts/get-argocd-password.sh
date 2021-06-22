@@ -19,4 +19,5 @@ until kubectl get secret argocd-secret -n "${NAMESPACE}" > /dev/null 2>&1 ; do
   sleep 30
 done
 
-kubectl get secret argocd-secret -n "${NAMESPACE}" -o jsonpath='{ .data.admin\.password }' | base64 -d > "${OUTPUT_FILE}"
+# kubectl get secret argocd-secret -n "${NAMESPACE}" -o jsonpath='{ .data.admin\.password }' | base64 -d > "${OUTPUT_FILE}"
+kubectl -n "${NAMESPACE}" get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d > "${OUTPUT_FILE}"
