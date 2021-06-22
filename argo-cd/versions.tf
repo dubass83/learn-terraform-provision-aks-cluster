@@ -16,9 +16,9 @@ terraform {
 
 provider "kubernetes" {
   config_path    = "~/.kube/config"
-  config_context = var.azurerm_kubernetes_cluster
+  config_context = "tolerant-parakeet-aks"
 }
 
 provider "k8s" {
-  config_context = var.azurerm_kubernetes_cluster
+  config_context = "tolerant-parakeet-aks"
 }
