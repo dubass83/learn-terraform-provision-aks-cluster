@@ -13,12 +13,3 @@ terraform {
 
   required_version = "~> 0.14"
 }
-
-provider "kubernetes" {
-  config_path    = "~/.kube/config"
-  config_context = "tolerant-parakeet-aks"
-}
-
-provider "k8s" {
-  config_context = "tolerant-parakeet-aks"
-}
