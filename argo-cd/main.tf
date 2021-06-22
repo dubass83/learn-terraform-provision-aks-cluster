@@ -1,6 +1,7 @@
 locals{
   tmp_dir           = "${path.cwd}/.tmp"
   password_file     = "${local.tmp_dir}/argocd-password.val"
+  resources = split("\n---\n", data.http.install.body)
 }
 
 // Get cluster credentials so we can perform tasks on it
@@ -28,9 +29,6 @@ resource "kubernetes_namespace" "argo" {
 # ----------------------------------------------------------------------------------------------------------------------
 # ArgoCD Resources
 # ----------------------------------------------------------------------------------------------------------------------
-locals {
-  resources = split("\n---\n", data.http.install.body)
-}
 
 resource "k8s_manifest" "resource" {
   count = length(local.resources)
@@ -52,9 +50,9 @@ resource "null_resource" "get_argocd_password" {
   provisioner "local-exec" {
     command = "${path.module}/scripts/get-argocd-password.sh ${var.namespace} ${local.password_file}"
 
-    // environment = {
-    //   KUBECONFIG = var.cluster_config_file
-    // }
+    environment = {
+      KUBE_CTX = var.azurerm_kubernetes_cluster
+    }
   }
 }
 

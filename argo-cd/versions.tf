@@ -13,3 +13,12 @@ terraform {
 
   required_version = "~> 0.14"
 }
+
+provider "kubernetes" {
+  config_path    = "~/.kube/config"
+  config_context = var.azurerm_kubernetes_cluster
+}
+
+provider "k8s" {
+  config_context = var.azurerm_kubernetes_cluster
+}
