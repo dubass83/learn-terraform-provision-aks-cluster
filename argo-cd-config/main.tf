@@ -5,7 +5,6 @@ locals {
 }
 
 resource "helm_release" "argocd-config" {
-  depends_on = [null_resource.clean_up_instance, null_resource.delete_argocd_config_helm]
 
   name         = "argocd-config-system-apps"
   repository   = "https://charts.cloudnativetoolkit.dev"
