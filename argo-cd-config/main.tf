@@ -55,7 +55,7 @@ resource "helm_release" "argocd-config" {
 
   set {
     name  = "applicationTargets[1].applications[0].name"
-    value = "apps/system"
+    value = "system-apps"
   }
 
   // set {
@@ -65,7 +65,7 @@ resource "helm_release" "argocd-config" {
 
     set {
     name  = "applicationTargets[1].applications[0].path"
-    value = "system-apps"
+    value = "apps/system"
   }
 
 }
