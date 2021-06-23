@@ -19,7 +19,7 @@ resource "helm_release" "argocd-config" {
   }
 
   set {
-    name  = "applicationTargets[0].createNamespace."
+    name  = "applicationTargets[0].createNamespace"
     value = true
   }
 
@@ -44,7 +44,7 @@ resource "helm_release" "argocd-config" {
   }
 
     set {
-    name  = "applicationTargets[1].createNamespace."
+    name  = "applicationTargets[1].createNamespace"
     value = true
   }
 
