@@ -22,22 +22,22 @@ spec:
     path: apps/istio/files/charts/gateways/istio-ingress
     targetRevision: "1.8.1"
     # helm specific config
-    helm:
-      # Release name override (defaults to application name)
-      # releaseName: istio-ingress
+    # helm:
+    #   # Release name override (defaults to application name)
+    #   # releaseName: istio-ingress
 
-      # Values file as block file
-      values: |
-        global:
-          hub: docker.io/istio
-          tag: 1.8.1
-          proxy:
-            holdApplicationUntilProxyStarts: true
-        gateways:
-          istio-ingressgateway:
-            serviceAnnotations: 
-              service.beta.kubernetes.io/azure-load-balancer-internal: "internal"
-              service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout: "30" 
+    #   # Values file as block file
+    #   values: |
+    #     global:
+    #       hub: docker.io/istio
+    #       tag: 1.8.1
+    #       proxy:
+    #         holdApplicationUntilProxyStarts: true
+    #     gateways:
+    #       istio-ingressgateway:
+    #         serviceAnnotations: 
+    #           service.beta.kubernetes.io/azure-load-balancer-internal: "internal"
+    #           service.beta.kubernetes.io/azure-load-balancer-tcp-idle-timeout: "30" 
               
 
   # Destination cluster and namespace to deploy the application
