@@ -1,7 +1,7 @@
 locals{
-  apps_istio = "k8s-manifest/apps-istio.yaml"
+  apps_istio = "k8s-manifests/apps-istio.yaml"
   resources_istio = split("\n---\n", data.local_file.argocd_apps_istio.content)
-  apps_system = "k8s-manifest/apps-system.yaml"
+  apps_system = "k8s-manifests/apps-system.yaml"
   resources_system = split("\n---\n", data.local_file.argocd_apps_system.content)
 }
 
