@@ -1,52 +1,251 @@
-apiVersion: argoproj.io/v1alpha1
-kind: Application
+---
+# Source: base/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  name: istio-base
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
-    #https://argoproj.github.io/argo-cd/user-guide/sync-options/#no-prune-resources
-    # argocd.argoproj.io/sync-options: Prune=false
-  # You'll usually want to add your resources to the argocd namespace.
-  namespace: argocd
-  # Add a this finalizer ONLY if you want these to cascade delete.
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  # The project the application belongs to.
-  project: default
+  name: istio-reader-service-account
+  namespace: istio-system
+  labels:
+    app: istio-reader
+    release: istio-base
+---
+# Source: base/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: istiod-service-account
+  namespace: istio-system
+  labels:
+    app: istiod
+    release: istio-base
+---
+# Source: base/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: istiod-istio-system
+  labels:
+    app: istiod
+    release: istio-base
+rules:
+  # sidecar injection controller
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["mutatingwebhookconfigurations"]
+    verbs: ["get", "list", "watch", "patch"]
 
-  # Source of the application manifests
-  source:
-    chart: istio-base
-    repoURL: https://github.com/dubass83/learn-terraform-provision-aks-cluster.git
-    path: apps/istio/files/charts/base
-    # targetRevision: "1.8.1"
-    # # helm specific config
-    # helm:
-    #   # Release name override (defaults to application name)
-    #   # releaseName: istio-base
+  # configuration validation webhook controller
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["validatingwebhookconfigurations"]
+    verbs: ["get", "list", "watch", "update"]
 
+  # istio configuration
+  - apiGroups: ["config.istio.io", "security.istio.io", "networking.istio.io", "authentication.istio.io"]
+    verbs: ["get", "watch", "list"]
+    resources: ["*"]
+  - apiGroups: ["networking.istio.io"]
+    verbs: [ "get", "watch", "list", "update", "patch", "create", "delete" ]
+    resources: [ "workloadentries" ]
+  - apiGroups: ["networking.istio.io"]
+    verbs: [ "get", "watch", "list", "update", "patch", "create", "delete" ]
+    resources: [ "workloadentries/status" ]
 
-  # Destination cluster and namespace to deploy the application
-  destination:
-    server: https://kubernetes.default.svc
+  # auto-detect installed CRD definitions
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+
+  # discovery and routing
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "services", "namespaces", "endpoints"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+
+  # ingress controller
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "ingressclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses/status"]
+    verbs: ["*"]
+
+  # required for CA's namespace controller
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "get", "list", "watch", "update"]
+
+  # Istiod and bootstrap.
+  - apiGroups: ["certificates.k8s.io"]
+    resources:
+      - "certificatesigningrequests"
+      - "certificatesigningrequests/approval"
+      - "certificatesigningrequests/status"
+    verbs: ["update", "create", "get", "delete", "watch"]
+  - apiGroups: ["certificates.k8s.io"]
+    resources:
+      - "signers"
+    resourceNames:
+    - "kubernetes.io/legacy-unknown"
+    verbs: ["approve"]
+
+  # Used by Istiod to verify the JWT tokens
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
+
+  # Used by Istiod to verify gateway SDS
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["create"]
+
+  # Use for Kubernetes Service APIs
+  - apiGroups: ["networking.x-k8s.io"]
+    resources: ["*"]
+    verbs: ["get", "watch", "list"]
+
+  # Needed for multicluster secret reading, possibly ingress certs in the future
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "watch", "list"]
+---
+# Source: base/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: istio-reader-istio-system
+  labels:
+    app: istio-reader
+    release: istio-base
+rules:
+  - apiGroups:
+      - "config.istio.io"
+      - "security.istio.io"
+      - "networking.istio.io"
+      - "authentication.istio.io"
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["endpoints", "pods", "services", "nodes", "replicationcontrollers", "namespaces", "secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["create"]
+---
+# Source: base/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: istio-reader-istio-system
+  labels:
+    app: istio-reader
+    release: istio-base
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: istio-reader-istio-system
+subjects:
+  - kind: ServiceAccount
+    name: istio-reader-service-account
     namespace: istio-system
+---
+# Source: base/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: istiod-istio-system
+  labels:
+    app: istiod
+    release: istio-base
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: istiod-istio-system
+subjects:
+  - kind: ServiceAccount
+    name: istiod-service-account
+    namespace: istio-system
+---
+# Source: base/templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: istiod-istio-system
+  namespace: istio-system
+  labels:
+    app: istiod
+    release: istio-base
+rules:
+# permissions to verify the webhook is ready and rejecting
+# invalid config. We use --server-dry-run so no config is persisted.
+- apiGroups: ["networking.istio.io"]
+  verbs: ["create"]
+  resources: ["gateways"]
 
-  # Sync policy
-  syncPolicy:
-    automated:
-      prune: true # Specifies if resources should be pruned during auto-syncing ( false by default ).
-      selfHeal: true # Specifies if partial app sync should be executed when resources are changed only in target Kubernetes cluster and no git change detected ( false by default ).
-    # syncOptions:     # Sync options which modifies sync behavior
-    # - Validate=false # disables resource validation (equivalent to 'kubectl apply --validate=true')
-
-  # # Ignore differences at the specified json pointers
-  # ignoreDifferences:
-  # - group: monitoring.coreos.com
-  #   kind: Alertmanager
-  #   jsonPointers:
-  #   - /spec/storage/volumeClaimTemplate/selector
-  # - group: monitoring.coreos.com
-  #   kind: Prometheus
-  #   jsonPointers:
-  #   - /spec/storage/volumeClaimTemplate/selector
+# For storing CA secret
+- apiGroups: [""]
+  resources: ["secrets"]
+  # TODO lock this down to istio-ca-cert if not using the DNS cert mesh config
+  verbs: ["create", "get", "watch", "list", "update", "delete"]
+---
+# Source: base/templates/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: istiod-istio-system
+  namespace: istio-system
+  labels:
+    app: istiod
+    release: istio-base
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: istiod-istio-system
+subjects:
+  - kind: ServiceAccount
+    name: istiod-service-account
+    namespace: istio-system
+---
+# Source: base/templates/validatingwebhookconfiguration.yaml
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: istiod-istio-system
+  labels:
+    app: istiod
+    release: istio-base
+    istio: istiod
+webhooks:
+  - name: validation.istio.io
+    clientConfig:
+      service:
+        name: istiod
+        namespace: istio-system
+        path: "/validate"
+      caBundle: "" # patched at runtime when the webhook is ready.
+    rules:
+      - operations:
+        - CREATE
+        - UPDATE
+        apiGroups:
+        - security.istio.io
+        - networking.istio.io
+        apiVersions:
+        - "*"
+        resources:
+        - "*"
+    # Fail open until the validation webhook is ready. The webhook controller
+    # will update this to `Fail` and patch in the `caBundle` when the webhook
+    # endpoint is ready.
+    failurePolicy: Ignore
+    sideEffects: None
+    admissionReviewVersions: ["v1beta1", "v1"]
