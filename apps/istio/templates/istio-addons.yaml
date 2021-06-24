@@ -18,7 +18,7 @@ spec:
   # Source of the application manifests
   source:
     repoURL: https://github.com/dubass83/learn-terraform-provision-aks-cluster
-    path: apps/istio/addons
+    path: apps/istio/files/addons
 
   # Destination cluster and namespace to deploy the application
   destination:
