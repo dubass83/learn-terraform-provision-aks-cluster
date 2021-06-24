@@ -1,71 +1,55 @@
-locals {
-  host              = "argocd.dubass83.xyz"
-  name              = "argocd-cluster"
-  url_endpoint      = "https://${local.host}"
+locals{
+  apps_istio = "k8s-manifest/apps-istio.yaml"
+  resources_istio = split("\n---\n", data.local_file.argocd_apps_istio.content)
+  apps_system = "k8s-manifest/apps-system.yaml"
+  resources_system = split("\n---\n", data.local_file.argocd_apps_system.content)
 }
 
-resource "helm_release" "argocd-config" {
 
-  name         = "argocd-config-system-apps"
-  repository   = "https://charts.cloudnativetoolkit.dev"
-  chart        = "argocd-config"
-  version      = "v0.18.2" 
-  namespace    = var.namespace
-  force_update = true
+data "local_file" "argocd_apps_istio" {
+  filename = local.apps_istio
+}
 
-  set {
-    name  = "repoUrl"
-    value = "https://github.com/dubass83/learn-terraform-provision-aks-cluster.git"
+data "local_file" "argocd_apps_system" {
+  filename = local.apps_system
+}
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Namespaces
+# ----------------------------------------------------------------------------------------------------------------------
+resource "kubernetes_namespace" "istio" {
+  metadata {
+    name = var.istio_namespace
   }
+}
 
-  set {
-    name  = "applicationTargets[0].createNamespace"
-    value = true
+# ----------------------------------------------------------------------------------------------------------------------
+# ArgoCD Resources
+# ----------------------------------------------------------------------------------------------------------------------
+
+resource "k8s_manifest" "resources_system" {
+  count = length(local.resources_system)
+
+  timeouts  {
+    create = "5m"
+    delete = "5m"
   }
+  
+  namespace = "kube-system"
+  content   = local.resources_system[count.index]
 
-  set {
-    name  = "applicationTargets[0].targetNamespace"
-    value = "istio-system"
+}
+
+resource "k8s_manifest" "resources_istio" {
+  count = length(local.resources_istio)
+
+  timeouts  {
+    create = "5m"
+    delete = "5m"
   }
+  
+  namespace = var.istio_namespace
+  content   = local.resources_istio[count.index]
 
-  set {
-    name  = "applicationTargets[0].applications[0].name"
-    value = "istio"
-  }
-
-  // set {
-  //   name  = "applicationTargets[0].applications[0].type"
-  //   value = "helm"
-  // }
-
-    set {
-    name  = "applicationTargets[0].applications[0].path"
-    value = "apps/istio"
-  }
-
-    set {
-    name  = "applicationTargets[1].createNamespace"
-    value = false
-  }
-
-  set {
-    name  = "applicationTargets[1].targetNamespace"
-    value = "kube-system"
-  }
-
-  set {
-    name  = "applicationTargets[1].applications[0].name"
-    value = "system-apps"
-  }
-
-  // set {
-  //   name  = "applicationTargets[1].applications[0].type"
-  //   value = "helm"
-  // }
-
-    set {
-    name  = "applicationTargets[1].applications[0].path"
-    value = "apps/system"
-  }
-
+  depends_on = [kubernetes_namespace.istio, k8s_manifest.resources_system]
 }

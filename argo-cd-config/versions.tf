@@ -1,7 +1,13 @@
 terraform {
   required_providers {
-    helm = {
-      version = ">= 1.1.1"
+    kubernetes = {
+        source  = "hashicorp/kubernetes"
+        version = ">= 1.13.0"
+    }
+
+    k8s = {
+        source = "banzaicloud/k8s"
+        version = ">= 0.8.0"
     }
   }
 

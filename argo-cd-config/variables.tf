@@ -1,4 +1,4 @@
-variable "namespace" {
+variable "istio_namespace" {
     type    = string
-    default = "argocd" 
+    default = "istio-system" 
 }
