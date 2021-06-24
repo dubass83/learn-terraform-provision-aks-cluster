@@ -20,7 +20,7 @@ spec:
     chart: istio-ingress
     repoURL: https://github.com/dubass83/learn-terraform-provision-aks-cluster
     path: apps/istio/files/charts/gateways/istio-ingress
-    # targetRevision: 1.2.0
+    targetRevision: HEAD
     # helm specific config
     helm:
       # Release name override (defaults to application name)
