@@ -1,0 +1,148 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki-stack
+  # You'll usually want to add your resources to the argocd namespace.
+  namespace: argocd
+  # Add a this finalizer ONLY if you want these to cascade delete.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # The project the application belongs to.
+  project: system
+
+  # Source of the application manifests
+  source:
+    chart: loki-stack
+    repoURL: https://grafana.github.io/helm-charts
+    targetRevision: 2.3.1
+    # helm specific config
+    helm:
+      # Release name override (defaults to application name)
+      releaseName: loki-stack
+
+      # Values file as block file
+      values: |
+        loki:
+          enabled: true
+
+          config:
+            auth_enabled: false
+            ingester:
+              chunk_idle_period: 3m
+              chunk_block_size: 262144
+              chunk_retain_period: 1m
+              max_transfer_retries: 0
+              lifecycler:
+                ring:
+                  kvstore:
+                    store: inmemory
+                  replication_factor: 1
+            limits_config:
+              enforce_metric_name: false
+              reject_old_samples: true
+              reject_old_samples_max_age: 168h
+            schema_config:
+              configs:
+              - from: 2020-10-24
+                store: boltdb-shipper
+                object_store: filesystem
+                schema: v11
+                index:
+                  prefix: index_
+                  period: 24h
+            server:
+              http_listen_port: 3100
+            table_manager:
+              retention_deletes_enabled: true
+              retention_period: 336h
+          persistence:
+            enabled: false
+            
+        promtail:
+          enabled: true
+
+        grafana:
+          enabled: true
+          sidecar:
+            datasources:
+              enabled: true
+          # image:
+          #   tag: 6.7.0
+          image:
+            repository: grafana/grafana
+            tag: 7.5.3
+            sha: ""
+            pullPolicy: IfNotPresent
+          securityContext:
+            runAsUser: 472
+            runAsGroup: 472
+            fsGroup: 472
+          service:
+            type: NodePort
+            port: 80
+            targetPort: 3000
+            nodePort: 30091
+            portName: service
+
+          serviceMonitor:
+            enabled: true
+            labels:
+              release: prometheus
+
+          persistence:
+            enabled: false
+            
+          env:
+            GF_SESSION_PROVIDER: memory
+            GF_SESSION_SESSION_LIFE_TIME: 1800
+            GF_USERS_ALLOW_SIGN_UP: false
+            
+          plugins:
+          - camptocamp-prometheus-alertmanager-datasource
+          - briangann-datatable-panel
+          - vonage-status-panel
+          - btplc-peak-report-panel
+          - mtanda-heatmap-epoch-panel
+          - mtanda-histogram-panel
+          - briangann-gauge-panel
+          - jdbranham-diagram-panel
+          - neocat-cal-heatmap-panel
+          - digiapulssi-breadcrumb-panel
+          - ryantxu-ajax-panel
+          - grafana-piechart-panel
+          - grafana-clock-panel
+          - grafana-simple-json-datasource
+          - cloudflare-app
+          - btplc-status-dot-panel
+          # App failed to recreate container when try to reinstall this plugin
+          #- vertamedia-clickhouse-datasource
+          #- alexanderzobnin-zabbix-app
+
+          datasources:
+            datasources.yaml:
+              apiVersion: 1
+              datasources:
+              - name: Prometheus
+                type: prometheus
+                url: http://prometheus-prometheus-oper-prometheus:9090/
+                access: proxy
+                isDefault: true
+              - name: Loki
+                type: loki
+                url: http://loki:3100/
+                access: proxy
+
+  # Destination cluster and namespace to deploy the application
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: plat-system
+
+  # Sync policy
+  syncPolicy:
+    automated:
+      prune: true # Specifies if resources should be pruned during auto-syncing ( false by default ).
+      selfHeal: true # Specifies if partial app sync should be executed when resources are changed only in target Kubernetes cluster and no git change detected ( false by default ).
+    syncOptions:     # Sync options which modifies sync behavior
+    - Validate=false # disables resource validation (equivalent to 'kubectl apply --validate=true')
