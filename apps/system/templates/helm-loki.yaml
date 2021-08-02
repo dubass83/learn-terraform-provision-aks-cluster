@@ -87,7 +87,7 @@ spec:
             portName: service
 
           serviceMonitor:
-            enabled: true
+            enabled: false
             labels:
               release: prometheus
 
